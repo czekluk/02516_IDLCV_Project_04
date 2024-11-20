@@ -116,3 +116,7 @@ main_notebook.ipynb
 *.ipynb
 *.out
 *.err
+
+*.avi
+*.jpg
+*.csv
