@@ -9,6 +9,8 @@ from torch.utils.data import DataLoader
 PROJECT_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data/ufc10')
 
+NUM_CLASSES = 10
+
 class FrameImageDataset(torch.utils.data.Dataset):
     def __init__(self, 
     root_dir=DATA_DIR,
@@ -16,7 +18,9 @@ class FrameImageDataset(torch.utils.data.Dataset):
     transform=None
     ):
         """
-        Dataset for frame-by-frame loading of UFC-10 dataset.
+        Dataset for frame-by-frame loading of UFC-10 dataset. Used for training per-frame models.
+        
+        Returns data in the format [channels, height, width].
 
         Args:
             root_dir (str, optional): Root directory of data folder 'ufc10'. Defaults to DATA_DIR specified in file.
@@ -40,6 +44,7 @@ class FrameImageDataset(torch.utils.data.Dataset):
         video_name = frame_path.split('/')[-2]
         video_meta = self._get_meta('video_name', video_name)
         label = video_meta['label'].item()
+        label = torch.nn.functional.one_hot(torch.tensor(label), num_classes=NUM_CLASSES)
         
         frame = Image.open(frame_path).convert("RGB")
 
@@ -59,7 +64,10 @@ class FrameVideoDataset(torch.utils.data.Dataset):
     stack_frames = True
         ):
         """
-        Dataset for VIDEO loading of UFC-10 dataset.
+        Dataset for VIDEO loading of UFC-10 dataset. 
+        Used for training early fusion/late fusion and 3D CNNs and validation of per-frame models.
+        
+        Returns data in the format [channels, frames, height, width].
         
         Args:
             root_dir (str, optional): Root directory of data folder 'ufc10'. Defaults to DATA_DIR specified in file.
@@ -87,6 +95,7 @@ class FrameVideoDataset(torch.utils.data.Dataset):
         video_name = video_path.split('/')[-1].split('.avi')[0]
         video_meta = self._get_meta('video_name', video_name)
         label = video_meta['label'].item()
+        label = torch.nn.functional.one_hot(torch.tensor(label), num_classes=NUM_CLASSES)
 
         video_frames_dir = self.video_paths[idx].split('.avi')[0].replace('videos', 'frames')
         video_frames = self.load_frames(video_frames_dir)
@@ -123,15 +132,27 @@ if __name__ == '__main__':
     frameimage_loader = DataLoader(frameimage_dataset, batch_size=8, shuffle=False)
     for frames, labels in frameimage_loader:
         print("Data shape [batch, channels, height, width]:", frames.shape)
-        print("Labels shape [batch]:", labels.shape)
+        print("Labels shape [batch, n_classes]:", labels.shape)
         break
     
-    # Test Video Dataset
+    # Test Video Dataset - Stack Frames into Tensor
     print('-'*50)
-    print('Testing FrameVideoDataset:')
+    print('Testing FrameVideoDataset: (tensor)')
     framevideostack_dataset = FrameVideoDataset(root_dir=root_dir, split='val', transform=transform, stack_frames = True)
     framevideostack_loader = DataLoader(framevideostack_dataset,  batch_size=8, shuffle=False)
     for video_frames, labels in framevideostack_loader:
         print("Data shape [batch, channels, frames, height, width]:", video_frames.shape)
-        print("Labels shape [batch]:", labels.shape)
+        print("Labels shape [batch, n_classes]:", labels.shape)
+        break
+
+    # Test Video Dataset - Do not Stack Frames
+    print('-'*50)
+    print('Testing FrameVideoDataset: (list)')
+    framevideolist_dataset = FrameVideoDataset(root_dir=root_dir, split='val', transform=transform, stack_frames = False)
+    framevideolist_loader = DataLoader(framevideolist_dataset, batch_size=8, shuffle=False)
+    for video_frames, labels in framevideolist_loader:
+        print("Data length [frames], list:", len(video_frames))
+        for frame in video_frames:
+            print("Data shape [batch, channels, height, width]:", frame.shape)
+        print("Labels shape [batch, n_classes]:", labels.shape)
         break
