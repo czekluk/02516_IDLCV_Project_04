@@ -3,14 +3,26 @@ import os
 import pandas as pd
 from PIL import Image
 import torch
-from torchvision import transforms as T
+from torchvision import transforms
+from torch.utils.data import DataLoader
+
+PROJECT_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data/ufc10')
 
 class FrameImageDataset(torch.utils.data.Dataset):
     def __init__(self, 
-    root_dir='/work3/ppar/data/ucf101',
-    split='train', 
+    root_dir=DATA_DIR,
+    split='train',
     transform=None
-):
+    ):
+        """
+        Dataset for frame-by-frame loading of UFC-10 dataset.
+
+        Args:
+            root_dir (str, optional): Root directory of data folder 'ufc10'. Defaults to DATA_DIR specified in file.
+            split (str, optional): Whether to return 'train' or 'test' split. Defaults to 'train'.
+            transform (PyTorch transform, optional): Transform to apply to dataset. Defaults to None.
+        """
         self.frame_paths = sorted(glob(f'{root_dir}/frames/{split}/*/*/*.jpg'))
         self.df = pd.read_csv(f'{root_dir}/metadata/{split}.csv')
         self.split = split
@@ -20,6 +32,7 @@ class FrameImageDataset(torch.utils.data.Dataset):
         return len(self.frame_paths)
 
     def _get_meta(self, attr, value):
+        """Get metadata for a given attribute and value. Used for reading labels."""
         return self.df.loc[self.df[attr] == value]
 
     def __getitem__(self, idx):
@@ -33,19 +46,27 @@ class FrameImageDataset(torch.utils.data.Dataset):
         if self.transform:
             frame = self.transform(frame)
         else:
-            frame = T.ToTensor()(frame)
+            frame = transforms.ToTensor()(frame)
 
         return frame, label
 
 
 class FrameVideoDataset(torch.utils.data.Dataset):
     def __init__(self, 
-    root_dir = '/work3/ppar/data/ucf101', 
+    root_dir = DATA_DIR, 
     split = 'train', 
     transform = None,
     stack_frames = True
-):
-
+        ):
+        """
+        Dataset for VIDEO loading of UFC-10 dataset.
+        
+        Args:
+            root_dir (str, optional): Root directory of data folder 'ufc10'. Defaults to DATA_DIR specified in file.
+            split (str, optional): Whether to return 'train' or 'test' split. Defaults to 'train'.
+            transform (PyTorch transform, optional): Transform to apply to dataset. Defaults to None.
+            stack_frames (bool, optional): Whether to stack frames into a single tensor [C, T, H, W]. Defaults to True.
+        """
         self.video_paths = sorted(glob(f'{root_dir}/videos/{split}/*/*.avi'))
         self.df = pd.read_csv(f'{root_dir}/metadata/{split}.csv')
         self.split = split
@@ -58,6 +79,7 @@ class FrameVideoDataset(torch.utils.data.Dataset):
         return len(self.video_paths)
     
     def _get_meta(self, attr, value):
+        """Get metadata for a given attribute and value. Used for reading labels."""
         return self.df.loc[self.df[attr] == value]
 
     def __getitem__(self, idx):
@@ -72,11 +94,9 @@ class FrameVideoDataset(torch.utils.data.Dataset):
         if self.transform:
             frames = [self.transform(frame) for frame in video_frames]
         else:
-            frames = [T.ToTensor()(frame) for frame in video_frames]
-        
+            frames = [transforms.ToTensor()(frame) for frame in video_frames]
         if self.stack_frames:
             frames = torch.stack(frames).permute(1, 0, 2, 3)
-
 
         return frames, label
     
@@ -91,28 +111,27 @@ class FrameVideoDataset(torch.utils.data.Dataset):
 
 
 if __name__ == '__main__':
-    from torch.utils.data import DataLoader
-
-    root_dir = '/work3/ppar/data/ucf101'
-
-    transform = T.Compose([T.Resize((64, 64)),T.ToTensor()])
+    # Specify params for dataset
+    print('Data Directory:', DATA_DIR)
+    root_dir = DATA_DIR
+    transform = transforms.Compose([transforms.Resize((64, 64)),transforms.ToTensor()])
+    
+    # Test Frame Dataset
+    print('-'*50)
+    print('Testing FrameImageDataset:')
     frameimage_dataset = FrameImageDataset(root_dir=root_dir, split='val', transform=transform)
+    frameimage_loader = DataLoader(frameimage_dataset, batch_size=8, shuffle=False)
+    for frames, labels in frameimage_loader:
+        print("Data shape [batch, channels, height, width]:", frames.shape)
+        print("Labels shape [batch]:", labels.shape)
+        break
+    
+    # Test Video Dataset
+    print('-'*50)
+    print('Testing FrameVideoDataset:')
     framevideostack_dataset = FrameVideoDataset(root_dir=root_dir, split='val', transform=transform, stack_frames = True)
-    framevideolist_dataset = FrameVideoDataset(root_dir=root_dir, split='val', transform=transform, stack_frames = False)
-
-
-    frameimage_loader = DataLoader(frameimage_dataset,  batch_size=8, shuffle=False)
     framevideostack_loader = DataLoader(framevideostack_dataset,  batch_size=8, shuffle=False)
-    framevideolist_loader = DataLoader(framevideolist_dataset,  batch_size=8, shuffle=False)
-
-    # for frames, labels in frameimage_loader:
-    #     print(frames.shape, labels.shape) # [batch, channels, height, width]
-
-    # for video_frames, labels in framevideolist_loader:
-    #     print(45*'-')
-    #     for frame in video_frames: # loop through number of frames
-    #         print(frame.shape, labels.shape)# [batch, channels, height, width]
-
     for video_frames, labels in framevideostack_loader:
-        print(video_frames.shape, labels.shape) # [batch, channels, number of frames, height, width]
-            
+        print("Data shape [batch, channels, frames, height, width]:", video_frames.shape)
+        print("Labels shape [batch]:", labels.shape)
+        break
