@@ -7,7 +7,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 
 PROJECT_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data/ufc10')
+DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data', 'ufc10')
 
 NUM_CLASSES = 10
 
@@ -75,8 +75,12 @@ class FrameVideoDataset(torch.utils.data.Dataset):
             transform (PyTorch transform, optional): Transform to apply to dataset. Defaults to None.
             stack_frames (bool, optional): Whether to stack frames into a single tensor [C, T, H, W]. Defaults to True.
         """
-        self.video_paths = sorted(glob(f'{root_dir}/videos/{split}/*/*.avi'))
-        self.df = pd.read_csv(f'{root_dir}/metadata/{split}.csv')
+        # Use os.path.join to construct platform-independent paths
+        videos_path = os.path.join(root_dir, "videos", split, "*", "*.avi")
+        self.video_paths = sorted(glob(videos_path))
+        metadata_path = os.path.join(root_dir, "metadata", f"{split}.csv")
+        self.df = pd.read_csv(metadata_path)
+
         self.split = split
         self.transform = transform
         self.stack_frames = stack_frames
@@ -92,12 +96,14 @@ class FrameVideoDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         video_path = self.video_paths[idx]
-        video_name = video_path.split('/')[-1].split('.avi')[0]
+        video_name = os.path.splitext(os.path.basename(video_path))[0]  # Extract video name without extension
+
         video_meta = self._get_meta('video_name', video_name)
         label = video_meta['label'].item()
         label = torch.nn.functional.one_hot(torch.tensor(label), num_classes=NUM_CLASSES)
 
-        video_frames_dir = self.video_paths[idx].split('.avi')[0].replace('videos', 'frames')
+        # Construct the path to the frames directory
+        video_frames_dir = video_path.replace(os.path.join("videos", ""), os.path.join("frames", "")).rsplit(".avi", 1)[0]
         video_frames = self.load_frames(video_frames_dir)
 
         if self.transform:
