@@ -1,4 +1,5 @@
 import torch
+from torchvision import models
 import torch.nn as nn
 
 N_CLASSES = 10
@@ -30,3 +31,18 @@ class DummyCNN(nn.Module):
         x = self.fully_connected(x)
         return x
 
+
+class AlexNetFeatureExtractor(nn.Module):
+    def __init__(self):
+        super(AlexNetFeatureExtractor, self).__init__()
+        # Load the pretrained AlexNet model
+        alexnet = models.alexnet(weights=models.AlexNet_Weights.DEFAULT)
+        # Keep only the features (convolutional layers)
+        self.features = alexnet.features
+        for param in self.features.parameters():
+            param.requires_grad = False
+
+    def forward(self, x):
+        # Forward pass through the convolutional layers
+        x = self.features(x)
+        return x
