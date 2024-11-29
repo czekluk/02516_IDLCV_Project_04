@@ -66,13 +66,14 @@ class Visualizer:
             file_name (str, optional): File name of the plot. Defaults to f'{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_confusion_matrix.png'.
         """
         # calculate the confusion matrix
-        confusion_matrix = calc_confusion_matrix(y_true, y_pred)
+        confusion_matrix = calc_confusion_matrix(y_true, y_pred, num_classes)
 
         # plot the confusion matrix
         fig, ax = plt.subplots(figsize=(10, 10))
         x_labels = ['BodyWeightSquats', 'HandstandPushups', 'HandstandWalking', 'JumpingJack', 'JumpRope', 'Lunges', 'PullUps', 'PushUps', 'TrampolineJumping', 'WallPushups']
+        # x_labels = [str(i) for i in range(10)]
         y_labels = x_labels
-        plt.figure(figsize=(3, 3))        
+        plt.figure(figsize=(12, 10))     
         sns.heatmap(
             ax=plt.gca(),
             data=confusion_matrix,
@@ -83,10 +84,16 @@ class Visualizer:
             fmt='g',
             xticklabels=x_labels,
             yticklabels=y_labels,
-            annot_kws={"size": 18}
+            annot_kws={"size": 14}
         )
-        plt.ylabel("True Label")
-        plt.xlabel("Predicted Label")
+        plt.title("Confusion Matrix", fontsize=16, pad=20)  # Add a title
+        plt.xlabel("Predicted Label", fontsize=14, labelpad=10)
+        plt.ylabel("True Label", fontsize=14, labelpad=10)
+        
+        # Rotate x-axis labels for better readability
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        
         plt.tight_layout()
 
         # save the plot
