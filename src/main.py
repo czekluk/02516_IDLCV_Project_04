@@ -7,6 +7,9 @@ import os
 import torch
 from torchvision import transforms
 from experiments.experiment import Experiment
+from visualizer import Visualizer
+from tqdm import tqdm
+import numpy as np
 
 
 PROJECT_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -61,6 +64,45 @@ def two_stream():
     experiment = Experiment(models, optimizers, epochs, train_loader, val_loader, test_loader, FrameVideoTrainer, "TwoStream")
     experiment.run()
 
+def plot_confusion_matrix(model_path: str):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    transform_test_val = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    model = torch.load(model_path, weights_only=False)
+    model.eval()
+    test_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='test', transform=transform_test_val, stack_frames = True)
+    test_loader = DataLoader(test_set_video,  batch_size=1, shuffle=False)
+    
+    y_true_list = []
+    y_pred_list = []
+
+    test_correct = 0
+    for minibatch_no, (data, target) in tqdm(enumerate(test_loader), total=len(test_loader)):
+        data, target = data.to(device), target.to(device)  # [batch, channels, frames, height, width]
+        with torch.no_grad():
+            output = model(data)  # [batch_size, n_classes]
+
+        # Predicted classes
+        predicted_classes = torch.argmax(output, dim=1)  # Shape: [batch_size]
+        target_classes = torch.argmax(target, dim=1)     # Shape: [batch_size]
+
+        # Collect predictions and true labels
+        y_pred_list.append(predicted_classes.cpu().numpy())  # Convert to numpy
+        y_true_list.append(target_classes.cpu().numpy())     # Convert to numpy
+
+        # Accuracy tracking (optional)
+        test_correct += (target_classes == predicted_classes).sum().cpu().item()
+
+    # Combine all batches into final arrays
+    y_true = np.concatenate(y_true_list, axis=0)  # Shape: [total_samples]
+    y_pred = np.concatenate(y_pred_list, axis=0)  # Shape: [total_samples]
+    
+    visualizer = Visualizer()
+    visualizer.plot_confusion_matrix(y_true, y_pred, 10)
+    
+
 if __name__ == "__main__":
     #early_fusion()
     two_stream()
+    # plot_confusion_matrix()
+    
