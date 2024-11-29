@@ -1,22 +1,5 @@
 import torch.nn as nn
-from torchvision import models
-
-class AlexNetFeatureExtractor(nn.Module):
-    def __init__(self):
-        super(AlexNetFeatureExtractor, self).__init__()
-        # Load the pretrained AlexNet model
-        alexnet = models.alexnet(weights=models.AlexNet_Weights.DEFAULT)
-        # Keep only the features (convolutional layers)
-        self.features = alexnet.features
-        for param in self.features.parameters():
-            param.requires_grad = False
-
-
-    def forward(self, x):
-        # Forward pass through the convolutional layers
-        x = self.features(x)
-        return x
-
+from models.basic_models import DummyCNN, AlexNetFeatureExtractor
 
 class LateFusionAlexNet(nn.Module):
     def __init__(self, num_classes=10, num_frames=10):
