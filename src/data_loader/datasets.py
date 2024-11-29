@@ -1,13 +1,16 @@
 from glob import glob
 import os
+import numpy as np
 import pandas as pd
 from PIL import Image
 import torch
 from torchvision import transforms
 from torch.utils.data import DataLoader
+from torch.functional import F
 
 PROJECT_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data', 'ufc10')
+# DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data', 'ufc10')
+DATA_DIR = os.path.join("/dtu/datasets1/02516","ucf101_noleakage")
 
 NUM_CLASSES = 10
 
@@ -123,13 +126,79 @@ class FrameVideoDataset(torch.utils.data.Dataset):
             frames.append(frame)
 
         return frames
+    
+class FlowVideoDataset(torch.utils.data.Dataset):
+    def __init__(self, 
+    root_dir = DATA_DIR, 
+    split = 'train', 
+    transform = None
+):
+
+        self.video_paths = sorted(glob(f'{root_dir}/videos/{split}/*/*.avi'))
+        self.df = pd.read_csv(f'{root_dir}/metadata/{split}.csv')
+        self.split = split
+        self.transform = transform   
+        self.n_sampled_frames = 1
+
+    def __len__(self):
+        return len(self.video_paths)
+    
+    def _get_meta(self, attr, value):
+        return self.df.loc[self.df[attr] == value]
+
+    def __getitem__(self, idx):
+        video_path = self.video_paths[idx]
+        video_name = video_path.split('/')[-1].split('.avi')[0]
+        video_meta = self._get_meta('video_name', video_name)
+        label = video_meta['label'].item()
+        label = torch.nn.functional.one_hot(torch.tensor(label), num_classes=NUM_CLASSES)
+
+        video_flows_dir = self.video_paths[idx].split('.avi')[0].replace('videos', 'flows')
+        flows = self.load_flows(video_flows_dir)
+        video_frames_dir = video_path.replace(os.path.join("videos", ""), os.path.join("frames", "")).rsplit(".avi", 1)[0]
+        frames = self.load_frames(video_frames_dir)
+        # pick one random frame
+        #frame = frames[np.random.choice(len(frames))]
+        frame = frames[0]
+        if self.transform:
+            frame = self.transform(frame)
+        else:
+            frame = transforms.ToTensor()(frame)
+
+        # stack flows and frame together - frame should be first three channels
+        final_frame = torch.concat([frame, flows], dim=0)
+
+        return final_frame, label
+    
+    def load_frames(self, frames_dir):
+        frames = []
+        for i in range(1, self.n_sampled_frames + 1):
+            frame_file = os.path.join(frames_dir, f"frame_{i}.jpg")
+            frame = Image.open(frame_file).convert("RGB")
+            frames.append(frame)
+
+        return frames
+
+    def load_flows(self, flows_dir):
+        flows = []
+        for i in range(1, self.n_sampled_frames + 1):
+            flow_file = os.path.join(f'{flows_dir}', f"flow_{i}_{i+1}.npy")
+            flow = np.load(flow_file)
+            if self.transform:
+                flow = self.transform(flow)
+            else:
+                flow = transforms.ToTensor()(flow)
+            flows.append(flow)
+        flows = torch.stack(flows)
+
+        return flows.flatten(0,1)
 
 
 if __name__ == '__main__':
     # Specify params for dataset
     print('Data Directory:', DATA_DIR)
     root_dir = DATA_DIR
-    transform = transforms.Compose([transforms.Resize((64, 64)),transforms.ToTensor()])
+    transform = transforms.Compose([transforms.ToTensor(),transforms.Resize((64, 64))])
     
     # Test Frame Dataset
     print('-'*50)
@@ -160,5 +229,15 @@ if __name__ == '__main__':
         print("Data length [frames], list:", len(video_frames))
         for frame in video_frames:
             print("Data shape [batch, channels, height, width]:", frame.shape)
+        print("Labels shape [batch, n_classes]:", labels.shape)
+        break
+
+    # Test Flow Video Dataset
+    print('-'*50)
+    print('Testing FlowVideoDataset:')
+    flowvideo_dataset = FlowVideoDataset(root_dir=root_dir, split="val", transform=transform)
+    flowvideo_loader = DataLoader(flowvideo_dataset, batch_size=8, shuffle=False)
+    for frames, labels in flowvideo_loader:
+        print("Data shape [batch, channels, frames, height, width]:", frames.shape)
         print("Labels shape [batch, n_classes]:", labels.shape)
         break
