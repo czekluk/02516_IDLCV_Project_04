@@ -17,7 +17,7 @@ DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data', 'ufc10')
 class FrameVideoTrainer:
     
     def __init__(self, models: List[nn.Module], optimizer_functions: List[dict], 
-                 epochs: int, train_loader: DataLoader, val_loader: DataLoader) -> None:
+                 epochs: int, train_loader: DataLoader, val_loader: DataLoader, test_loader: DataLoader, description: str="") -> None:
         """
         Class for training different models with different optimizers and different numbers of epochs.
         
@@ -35,6 +35,8 @@ class FrameVideoTrainer:
         self.epochs = epochs
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.test_loader = test_loader
+        self.description = description
     
     
     def train(self) -> List[dict]:
@@ -71,8 +73,10 @@ class FrameVideoTrainer:
             'val_acc':         [],
             'train_loss':       [],
             'val_loss':        [],
+            'test_acc':         0,
             'epochs':           num_epochs,
-            'optimizer_config': optimizer_config 
+            'optimizer_config': optimizer_config, 
+            'description':      self.description
             }
         
         for epoch in tqdm(range(num_epochs), unit='epoch'):
@@ -88,7 +92,7 @@ class FrameVideoTrainer:
                 predicted_classes = torch.argmax(output, dim=1)
                 target_classes = torch.argmax(targets, dim=1)
 
-                loss = self.criterion(output, target_classes) # correct shapes for nn.CrossEntropyLoss
+                loss = self.criterion(output, targets.clone().detach().float().requires_grad_(True)) # correct shapes for nn.CrossEntropyLoss
                 loss.backward()
                 optimizer.step()
                 
@@ -117,9 +121,26 @@ class FrameVideoTrainer:
             out_dict['val_loss'].append(np.mean(val_loss))
             print(f"Loss train: {np.mean(train_loss):.3f}\t Val: {np.mean(val_loss):.3f}\t",
                 f"Accuracy train: {out_dict['train_acc'][-1]*100:.1f}%\t Val: {out_dict['val_acc'][-1]*100:.1f}%")
-            
         print(f"Loss train: {np.mean(train_loss):.3f}\t Val: {np.mean(val_loss):.3f}\t",
                 f"Accuracy train: {out_dict['train_acc'][-1]*100:.1f}%\t Val: {out_dict['val_acc'][-1]*100:.1f}%")
+        
+        test_correct = 0
+        for minibatch_no, (data, target) in tqdm(enumerate(self.test_loader), total=len(self.test_loader)):
+            data, target = data.to(self.device), target.to(self.device)  # [batch, channels, frames, height, width]
+            with torch.no_grad():
+                output = model(data)  # [batch_size, n_classes]
+
+            # Calculate the loss
+            predicted_classes = torch.argmax(output, dim=1)
+            target_classes = torch.argmax(target, dim=1)
+            loss = self.criterion(output, target_classes)
+
+            test_correct += (target_classes==predicted_classes).sum().cpu().item()
+        
+        correct_perc = test_correct/len(self.test_loader.dataset)
+        out_dict['test_acc'] = correct_perc
+        print(f"Test Acc: {correct_perc * 100:.1f}%")    
+        
         
         return out_dict
 
