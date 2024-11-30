@@ -15,8 +15,8 @@ import numpy as np
 
 
 PROJECT_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data', 'ufc10')
-#DATA_DIR = os.path.join("/dtu/datasets1/02516","ucf101_noleakage")
+#DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data', 'ufc10')
+DATA_DIR = os.path.join("/dtu/datasets1/02516","ucf101_noleakage")
 
 def early_fusion():
     batch_size = 64
@@ -142,5 +142,5 @@ if __name__ == "__main__":
     #RESULTS_DIR = os.path.join(PROJECT_BASE_DIR, 'results', "20241130-163803_Aggregate" )
     #results_json = "20241130-163803_Aggregate.json"
     #plot_curves(RESULTS_DIR, results_json)
-    aggregate()
+    #aggregate()
     pass
