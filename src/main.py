@@ -5,6 +5,7 @@ from trainer import FrameVideoTrainer
 from torch.utils.data import DataLoader
 import os
 import torch
+import json
 from torchvision import transforms
 from experiments.experiment import Experiment
 from visualizer import Visualizer
@@ -42,7 +43,7 @@ def early_fusion():
 
 def two_stream():
     batch_size = 32
-    transform_train = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224)), transforms.RandomErasing(p=0.7, scale=(0.15, 0.33), ratio=(0.3, 3.3), value=0)])
+    transform_train = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224))])
     transform_test_val = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224))])
     # transform_train = transform_test_val
     
@@ -67,10 +68,10 @@ def two_stream():
 def plot_confusion_matrix(model_path: str):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    transform_test_val = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    transform_test_val = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224))])
     model = torch.load(model_path, weights_only=False)
     model.eval()
-    test_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='test', transform=transform_test_val, stack_frames = True)
+    test_set_video = FlowVideoDataset(root_dir=DATA_DIR, split='test', transform=transform_test_val)
     test_loader = DataLoader(test_set_video,  batch_size=1, shuffle=False)
     
     y_true_list = []
@@ -97,12 +98,26 @@ def plot_confusion_matrix(model_path: str):
     y_true = np.concatenate(y_true_list, axis=0)  # Shape: [total_samples]
     y_pred = np.concatenate(y_pred_list, axis=0)  # Shape: [total_samples]
     
+    results_dir = "results/20241129-234934_TwoStream"
     visualizer = Visualizer()
-    visualizer.plot_confusion_matrix(y_true, y_pred, 10)
+    visualizer.plot_confusion_matrix(y_true, y_pred, 10, save_path=results_dir)
     
+def plot_curves():
+    results_dir = "results/20241129-234934_TwoStream"
+    results_json = "20241129-234934_TwoStream.json"
+
+    with open(os.path.join(results_dir, results_json), 'r') as file:
+        results = json.load(file)
+
+    vis = Visualizer()
+    vis.plot_loss_accuracy(train_loss=results[0]["train_loss"], val_loss=results[0]["val_loss"],
+                           train_accuracy=results[0]["train_acc"], val_accuracy=results[0]["val_acc"],
+                           save_path=results_dir)
 
 if __name__ == "__main__":
-    #early_fusion()
-    two_stream()
-    # plot_confusion_matrix()
+    # early_fusion()
+    # two_stream()
+    # plot_confusion_matrix("results/20241129-234934_TwoStream/saved_models/20241129-234934_TwoStream_0.3833_TwoStreamAlexNet.pth")
+    # plot_curves()
+    pass
     
