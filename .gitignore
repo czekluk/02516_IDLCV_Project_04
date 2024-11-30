@@ -120,3 +120,7 @@ main_notebook.ipynb
 *.avi
 *.jpg
 *.csv
+
+*.json
+!results/experiments_to_plot.json
+!results/experiments.json
