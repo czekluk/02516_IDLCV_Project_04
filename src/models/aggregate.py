@@ -1,4 +1,5 @@
 import torch
+from torchvision import models
 import torch.nn as nn
 
 from models.basic_models import DummyCNN, AlexNetFeatureExtractor
@@ -39,16 +40,13 @@ class AggregateAlexNet(nn.Module):
     def __init__(self, num_classes=10, num_frames=10):
         super(AggregateAlexNet, self).__init__()
         self.num_frames = num_frames
-        self.cnn_model = AlexNetFeatureExtractor()
-        self.classifier = nn.Sequential(
-            nn.Linear(256 * 6 * 6 * num_frames, 4096),  # Flattened features from all frames
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(4096, 4096),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(4096, num_classes)
-        )
+        self.cnn_model = models.alexnet(weights=models.AlexNet_Weights.IMAGENET1K_V1)
+        # Freeze earlier layers
+        for param in self.cnn_model.features.parameters():
+            param.requires_grad = False
+        
+        # Adjust the classifier for background and pothole
+        self.cnn_model.classifier[6] = nn.Linear(4096, num_classes)
 
     def forward(self, x):
         """
@@ -88,30 +86,3 @@ class AggregateAlexNet(nn.Module):
         # logits = self.classifier(video_features)  # Shape: [batch_size, num_classes]
 
         # return logits
-
-
-# class ClassifierAlexNet(nn.Module):
-    
-#     def __init__(self):
-#         """
-#         The input to the model needs to be [batch_size, 3, 224, 224],
-#         since AlexNet takes that as the input.
-        
-#         The forward pass returns one logit, so BCE should be used.
-#         """
-#         super().__init__()
-        
-#         self.model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT)
-        
-#         # Freeze earlier layers
-#         for param in self.model.features.parameters():
-#             param.requires_grad = False
-        
-#         # Adjust the classifier for background and pothole
-#         self.model.classifier[6] = nn.Linear(4096, 1)
-    
-    
-#     def forward(self, x):
-#         assert x.shape[1:] == (3, 224, 224), f"Expected input shape [batch_size, 3, 224, 224], but got {x.shape}"
-        
-#         return self.model(x)
