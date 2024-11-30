@@ -42,7 +42,7 @@ def early_fusion():
 
 def two_stream():
     batch_size = 32
-    transform_train = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224))])
+    transform_train = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224)), transforms.RandomErasing(p=0.7, scale=(0.15, 0.33), ratio=(0.3, 3.3), value=0)])
     transform_test_val = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224))])
     # transform_train = transform_test_val
     
@@ -59,7 +59,7 @@ def two_stream():
     # Models, Optimizers, Epochs
     models = [TwoStreamAlexNet]
     optimizers = [{"optimizer": torch.optim.Adam, "params": {"lr": 1e-3, "weight_decay": 1e-3}}]
-    epochs = [5]
+    epochs = [50]
     
     experiment = Experiment(models, optimizers, epochs, train_loader, val_loader, test_loader, FrameVideoTrainer, "TwoStream")
     experiment.run()
