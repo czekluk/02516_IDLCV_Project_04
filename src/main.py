@@ -1,5 +1,6 @@
 from models.early_fusion import EarlyFusionAlexNet
 from models.two_stream import TwoStreamAlexNet
+from models.aggregate import AggregateAlexNet
 from data_loader.datasets import FrameVideoDataset, FlowVideoDataset
 from trainer import FrameVideoTrainer
 from torch.utils.data import DataLoader
@@ -65,7 +66,31 @@ def two_stream():
     experiment = Experiment(models, optimizers, epochs, train_loader, val_loader, test_loader, FrameVideoTrainer, "TwoStream")
     experiment.run()
 
-def plot_confusion_matrix(model_path: str):
+def aggregate():
+    batch_size = 64
+    transform_train = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224))])
+    transform_test_val = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224))])
+    # transform_train = transform_test_val
+    
+    train_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='train', transform=transform_train, stack_frames = True)
+    train_loader = DataLoader(train_set_video,  batch_size=batch_size, shuffle=True)
+
+    val_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='val', transform=transform_test_val, stack_frames = True)
+    val_loader = DataLoader(val_set_video,  batch_size=batch_size, shuffle=True)
+    
+    # Not used in the training process
+    test_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='test', transform=transform_test_val, stack_frames = True)
+    test_loader = DataLoader(test_set_video,  batch_size=batch_size, shuffle=False)
+    
+    # Models, Optimizers, Epochs
+    models = [AggregateAlexNet]
+    optimizers = [{"optimizer": torch.optim.Adam, "params": {"lr": 1e-3, "weight_decay": 1e-4}}]
+    epochs = [20]
+    
+    experiment = Experiment(models, optimizers, epochs, train_loader, val_loader, test_loader, FrameVideoTrainer, "Aggregate")
+    experiment.run()
+
+def plot_confusion_matrix_flow(model_path: str, results_dir: str = "results/"):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     transform_test_val = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224))])
@@ -98,14 +123,10 @@ def plot_confusion_matrix(model_path: str):
     y_true = np.concatenate(y_true_list, axis=0)  # Shape: [total_samples]
     y_pred = np.concatenate(y_pred_list, axis=0)  # Shape: [total_samples]
     
-    results_dir = "results/20241129-234934_TwoStream"
     visualizer = Visualizer()
     visualizer.plot_confusion_matrix(y_true, y_pred, 10, save_path=results_dir)
     
-def plot_curves():
-    results_dir = "results/20241129-234934_TwoStream"
-    results_json = "20241129-234934_TwoStream.json"
-
+def plot_curves(results_dir, results_json):
     with open(os.path.join(results_dir, results_json), 'r') as file:
         results = json.load(file)
 
@@ -118,6 +139,8 @@ if __name__ == "__main__":
     # early_fusion()
     # two_stream()
     # plot_confusion_matrix("results/20241129-234934_TwoStream/saved_models/20241129-234934_TwoStream_0.3833_TwoStreamAlexNet.pth")
-    # plot_curves()
+    #RESULTS_DIR = os.path.join(PROJECT_BASE_DIR, 'results', "20241130-163803_Aggregate" )
+    #results_json = "20241130-163803_Aggregate.json"
+    #plot_curves(RESULTS_DIR, results_json)
+    #aggregate()
     pass
-    

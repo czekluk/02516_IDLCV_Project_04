@@ -162,13 +162,15 @@ def test_latefusion_trainer():
         optimizer_functions = [{"optimizer": torch.optim.Adam, "params": {"lr": 1e-3}}],
         epochs = [2],
         train_loader=train_loader,
-        val_loader=val_loader
+        val_loader=val_loader,
+        test_loader=test_loader
     )
     outputs = trainer.train()
+    return outputs
     
 def test_aggregate_trainer():
     # Testing Late Fusion Trainer:
-    transform = transforms.Compose([transforms.Resize((64, 64)),transforms.ToTensor()])
+    transform = transforms.Compose([transforms.Resize((224, 224)),transforms.ToTensor()])
     train_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='train', transform=transform, stack_frames = True)
     train_loader = DataLoader(train_set_video,  batch_size=2, shuffle=True)
 
@@ -180,13 +182,15 @@ def test_aggregate_trainer():
     test_loader = DataLoader(test_set_video,  batch_size=2, shuffle=False)
     
     trainer = FrameVideoTrainer(
-        models = [AggregateDummyNet],
+        models = [AggregateAlexNet],
         optimizer_functions = [{"optimizer": torch.optim.Adam, "params": {"lr": 1e-3}}],
         epochs = [5],
         train_loader=train_loader,
-        val_loader=val_loader
+        val_loader=val_loader,
+        test_loader=test_loader
     )
     outputs = trainer.train()
+    return outputs
 
 if __name__ == "__main__":
     output = test_aggregate_trainer()
