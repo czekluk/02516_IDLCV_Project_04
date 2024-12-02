@@ -1,0 +1,8 @@
+*.png
+*.json
+!20241202-150113_cnn_3d_ownmodel/*.png
+!20241202-150113_cnn_3d_ownmodel/*.json
+!20241202-152329_cnn3d_pretrained_resnet/*.png
+!20241202-152329_cnn3d_pretrained_resnet/*.json
+
+
