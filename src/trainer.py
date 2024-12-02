@@ -85,7 +85,7 @@ class FrameVideoTrainer:
             train_loss = []
             
             for minibatch_no, (data, targets) in tqdm(enumerate(self.train_loader), total=len(self.train_loader)):
-                data, targets = data.to(self.device), targets.to(self.device) # [batch, channels, height, width]
+                data, targets = data.to(self.device), targets.to(self.device) # [batch=num_videos, channels, num_frames_per_video, height, width]
 
                 optimizer.zero_grad()
                 output = model(data) # [batch_size, n_classes]
@@ -174,17 +174,17 @@ def test_aggregate_trainer():
     train_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='train', transform=transform, stack_frames = True)
     train_loader = DataLoader(train_set_video,  batch_size=2, shuffle=True)
 
-    val_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='val', transform=transform, stack_frames = True)
+    val_set_video = FrameVideoDataset(split='val', transform=transform, stack_frames = True)
     val_loader = DataLoader(val_set_video,  batch_size=2, shuffle=True)
 
     # Not used in the training process
-    test_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='test', transform=transform, stack_frames = True)
+    test_set_video = FrameVideoDataset(split='test', transform=transform, stack_frames = True)
     test_loader = DataLoader(test_set_video,  batch_size=2, shuffle=False)
     
     trainer = FrameVideoTrainer(
         models = [AggregateAlexNet],
         optimizer_functions = [{"optimizer": torch.optim.Adam, "params": {"lr": 1e-3}}],
-        epochs = [5],
+        epochs = [2],
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader

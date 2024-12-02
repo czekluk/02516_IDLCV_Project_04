@@ -64,7 +64,8 @@ class FrameVideoDataset(torch.utils.data.Dataset):
     root_dir = DATA_DIR, 
     split = 'train', 
     transform = None,
-    stack_frames = True
+    stack_frames = True,
+    sampled_frames = 10
         ):
         """
         Dataset for VIDEO loading of UFC-10 dataset. 
@@ -88,7 +89,7 @@ class FrameVideoDataset(torch.utils.data.Dataset):
         self.transform = transform
         self.stack_frames = stack_frames
         
-        self.n_sampled_frames = 10
+        self.n_sampled_frames = sampled_frames
 
     def __len__(self):
         return len(self.video_paths)
