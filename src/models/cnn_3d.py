@@ -24,38 +24,39 @@ class Block3D(nn.Module):
         super(Block3D, self).__init__()
         self.block= nn.Sequential(
             nn.LazyBatchNorm3d(),
-            nn.Dropout3d(p=0.1),
+            nn.Dropout3d(p=0.05, inplace=True),
             LazyConv3d(out_channels=ch, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
 
             nn.LazyBatchNorm3d(),
-            nn.Dropout3d(p=0.1),
+            nn.Dropout3d(p=0.05, inplace=True),
             LazyConv3d(out_channels=ch, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
             
             nn.LazyBatchNorm3d(),
-            nn.Dropout3d(p=0.1),
+            nn.Dropout3d(p=0.05, inplace=True),
             LazyConv3d(out_channels=ch, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
-            nn.LazyBatchNorm3d(),
-
             )
     def forward(self, x):
         x= self.block(x)
         return x
 
 class Basic3DCNN(nn.Module):
-    def __init__(self, num_classes=10, ch=64, depth=8):
+    def __init__(self, num_classes=10, ch=32, depth=8):
         super(Basic3DCNN, self).__init__()
         self.num_classes = num_classes
         self.initblock= Block3D(ch)
         self.blocks = nn.ModuleList([Block3D(ch) for _ in range(depth-1)])
         self.classifier= nn.Sequential(
-            nn.AdaptiveAvgPool3d((10,2,2)),
+            nn.AdaptiveAvgPool3d((10,10,10)),
             nn.Flatten(),
-            nn.Linear(in_features=40*ch,out_features=num_classes)
-        )
-        self.time_embed = nn.Embedding(10, 3)
+            nn.Dropout1d(p=0.2),
+            nn.Linear(in_features=1000*ch,out_features=1024),
+            nn.ReLU(inplace=True),
+            nn.Dropout1d(p=0.2),
+            nn.Linear(in_features=1024,out_features=num_classes))
+        self.time_embed = nn.Embedding(10, 1)
 
 
         
@@ -67,7 +68,7 @@ class Basic3DCNN(nn.Module):
             logits: Tensor of shape (batch_size, num_classes)
         """
         # Add time embedding
-        batch_size, channels, num_frames, height, width = x.shape
+        # batch_size, channels, num_frames, height, width = x.shape
         # time_embed = torch.arange(num_frames, device=x.device)
         # time_embed = self.time_embed(time_embed)[:,:,None,None,None]
         # time_embed = time_embed.permute(2, 1, 0, 3, 4)
@@ -91,7 +92,12 @@ class Pretrained3dCNN(nn.Module):
         # Load a pretrained S3D model
         self.model = r3d_18(pretrained=True)
         in_features = self.model.fc.in_features
-        self.model.fc = nn.Linear(in_features, num_classes)
+        self.model.fc = nn.Sequential(
+            nn.Dropout1d(p=0.1),
+            nn.Linear(in_features=in_features,out_features=1024),
+            nn.ReLU(inplace=True),
+            nn.Dropout1d(p=0.1),
+            nn.Linear(in_features=1024,out_features=num_classes))
     def forward(self, x):
         """
         Args:

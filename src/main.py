@@ -13,7 +13,9 @@ from experiments.experiment import Experiment
 from visualizer import Visualizer
 from tqdm import tqdm
 import numpy as np
-
+from sklearn.metrics import precision_score, recall_score
+from utils import confusion_matrix_models, plot_confusion_matrix_flow, plot_curves, new_class_weights
+import torch.nn as nn
 
 PROJECT_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data', 'ufc10')
@@ -45,7 +47,7 @@ def early_fusion():
 
 def cnn_3d():
     batch_size = 4
-    transform_train = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(), transforms.RandomErasing(p=0.7, scale=(0.15, 0.33), ratio=(0.3, 3.3), value=0)])
+    transform_train = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
     transform_test_val = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
     # transform_train = transform_test_val
     
@@ -58,14 +60,36 @@ def cnn_3d():
     # Not used in the training process
     test_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='test', transform=transform_test_val, stack_frames = True)
     test_loader = DataLoader(test_set_video,  batch_size=batch_size, shuffle=False)
-    
+    # new_weights= new_class_weights("/zhome/25/a/202562/intro_deep_learning_in_computer_vision/02516_IDLCV_Project_04/results/20241202-030036_pretrained_3d_cnn/saved_models/20241202-030036_pretrained_3d_cnn_0.2667_Pretrained3dCNN.pth")
     # Models, Optimizers, Epochs
-    models = [Basic3DCNN]
+    models = [Pretrained3dCNN]
     optimizers = [{"optimizer": torch.optim.Adam, "params": {"lr": 1e-3, "weight_decay": 1e-4}}]
-    epochs = [10]
+    epochs = [30]
     
-    experiment = Experiment(models=models, optimizers=optimizers, epochs=epochs, trainloader=train_loader, validation_loader=val_loader, test_loader=test_loader, 
-                            trainer=FrameVideoTrainer, description= "pretrained_3d_cnn_andvision_transformer")   
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # criterion = nn.CrossEntropyLoss(weight=new_weights).to(device)
+
+    # experiment = Experiment(
+    #     models=models,
+    #     optimizers=optimizers,
+    #     epochs=epochs,
+    #     trainloader=train_loader,
+    #     validation_loader=val_loader,
+    #     test_loader=test_loader,
+    #     trainer=FrameVideoTrainer,
+    #     description="cnn_3d",
+    #     criterion=criterion
+    # )
+    experiment = Experiment(
+        models=models,
+        optimizers=optimizers,
+        epochs=epochs,
+        trainloader=train_loader,
+        validation_loader=val_loader,
+        test_loader=test_loader,
+        trainer=FrameVideoTrainer,
+        description="cnn_3d"
+    )
     experiment.run()
 
 def two_stream():
@@ -116,51 +140,6 @@ def aggregate():
     experiment = Experiment(models, optimizers, epochs, train_loader, val_loader, test_loader, FrameVideoTrainer, "Aggregate")
     experiment.run()
 
-def plot_confusion_matrix_flow(model_path: str, results_dir: str = "results/"):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    transform_test_val = transforms.Compose([transforms.ToTensor(), transforms.Resize((224, 224))])
-    model = torch.load(model_path, weights_only=False)
-    model.eval()
-    test_set_video = FlowVideoDataset(root_dir=DATA_DIR, split='test', transform=transform_test_val)
-    test_loader = DataLoader(test_set_video,  batch_size=1, shuffle=False)
-    
-    y_true_list = []
-    y_pred_list = []
-
-    test_correct = 0
-    for minibatch_no, (data, target) in tqdm(enumerate(test_loader), total=len(test_loader)):
-        data, target = data.to(device), target.to(device)  # [batch, channels, frames, height, width]
-        with torch.no_grad():
-            output = model(data)  # [batch_size, n_classes]
-
-        # Predicted classes
-        predicted_classes = torch.argmax(output, dim=1)  # Shape: [batch_size]
-        target_classes = torch.argmax(target, dim=1)     # Shape: [batch_size]
-
-        # Collect predictions and true labels
-        y_pred_list.append(predicted_classes.cpu().numpy())  # Convert to numpy
-        y_true_list.append(target_classes.cpu().numpy())     # Convert to numpy
-
-        # Accuracy tracking (optional)
-        test_correct += (target_classes == predicted_classes).sum().cpu().item()
-
-    # Combine all batches into final arrays
-    y_true = np.concatenate(y_true_list, axis=0)  # Shape: [total_samples]
-    y_pred = np.concatenate(y_pred_list, axis=0)  # Shape: [total_samples]
-    
-    visualizer = Visualizer()
-    visualizer.plot_confusion_matrix(y_true, y_pred, 10, save_path=results_dir)
-    
-def plot_curves(results_dir, results_json):
-    with open(os.path.join(results_dir, results_json), 'r') as file:
-        results = json.load(file)
-
-    vis = Visualizer()
-    vis.plot_loss_accuracy(train_loss=results[0]["train_loss"], val_loss=results[0]["val_loss"],
-                           train_accuracy=results[0]["train_acc"], val_accuracy=results[0]["val_acc"],
-                           save_path=results_dir)
-
 if __name__ == "__main__":
     # early_fusion()
     # two_stream()
@@ -169,5 +148,6 @@ if __name__ == "__main__":
     #results_json = "20241130-163803_Aggregate.json"
     #plot_curves(RESULTS_DIR, results_json)
     #aggregate()
-    #cnn_3d()
+    # cnn_3d()
+    _,_,_, _ = confusion_matrix_models("/zhome/25/a/202562/intro_deep_learning_in_computer_vision/02516_IDLCV_Project_04/results/20241202-152329_pretrained_resnet/saved_models/20241202-152329_cnn_3d_0.1000_Pretrained3dCNN.pth")
     pass

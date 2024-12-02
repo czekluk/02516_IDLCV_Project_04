@@ -5,14 +5,14 @@ import json
 import glob
 import numpy as np
 from tqdm import tqdm
-
+import torch.nn as nn
 import torchvision.transforms as transforms
 
 PROJECT_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data')
 
 class Experiment:
-    def __init__(self, models, optimizers, epochs, trainloader, validation_loader, test_loader, trainer, description="Baseline experiment", save_dir=os.path.join(PROJECT_BASE_DIR, 'results')):
+    def __init__(self, models, optimizers, epochs, trainloader, validation_loader, test_loader, trainer, criterion= nn.CrossEntropyLoss(),description="Baseline experiment", save_dir=os.path.join(PROJECT_BASE_DIR, 'results')):
         self.models = models
         self.optimizers = optimizers
         self.epochs = epochs
@@ -25,13 +25,14 @@ class Experiment:
         self.timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         self.results = {}
         self.transforms = transforms
+        self.criterion = criterion
 
     def run(self, save=True):
         '''
         Run the defined experiment.
         '''
         print("Running experiment: ", self.description)
-        trainer = self.trainer(self.models, self.optimizers, self.epochs, self.trainloader, self.validationloader, self.testloader, self.description)
+        trainer = self.trainer(self.models, self.optimizers, self.epochs, self.trainloader, self.validationloader, self.testloader, self.description, criterion=self.criterion)
         self.results = trainer.train()
         if save:
             self.save(top_k=1)

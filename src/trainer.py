@@ -17,7 +17,7 @@ DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'data', 'ufc10')
 class FrameVideoTrainer:
     
     def __init__(self, models: List[nn.Module], optimizer_functions: List[dict], 
-                 epochs: int, train_loader: DataLoader, val_loader: DataLoader, test_loader: DataLoader, description: str="") -> None:
+                 epochs: int, train_loader: DataLoader, val_loader: DataLoader, test_loader: DataLoader, description: str="", criterion= nn.CrossEntropyLoss()) -> None:
         """
         Class for training different models with different optimizers and different numbers of epochs.
         
@@ -29,7 +29,7 @@ class FrameVideoTrainer:
                 test_loader         -   torch.utils.data.DataLoader
         """
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = criterion
         self.models = models
         self.optimizer_functions = optimizer_functions
         self.epochs = epochs
