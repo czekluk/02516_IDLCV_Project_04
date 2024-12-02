@@ -1,6 +1,7 @@
 from models.early_fusion import EarlyFusionAlexNet
 from models.two_stream import TwoStreamAlexNet
 from models.aggregate import AggregateAlexNet
+from models.cnn_3d import Basic3DCNN, Pretrained3dCNN, PretrainedVisionTransformer
 from data_loader.datasets import FrameVideoDataset, FlowVideoDataset
 from trainer import FrameVideoTrainer
 from torch.utils.data import DataLoader
@@ -40,6 +41,31 @@ def early_fusion():
     epochs = [100]
     
     experiment = Experiment(models, optimizers, epochs, train_loader, val_loader, test_loader, FrameVideoTrainer, "EarlyFusion")
+    experiment.run()
+
+def cnn_3d():
+    batch_size = 4
+    transform_train = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(), transforms.RandomErasing(p=0.7, scale=(0.15, 0.33), ratio=(0.3, 3.3), value=0)])
+    transform_test_val = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    # transform_train = transform_test_val
+    
+    train_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='train', transform=transform_train, stack_frames = True)
+    train_loader = DataLoader(train_set_video,  batch_size=batch_size, shuffle=True)
+
+    val_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='val', transform=transform_test_val, stack_frames = True)
+    val_loader = DataLoader(val_set_video,  batch_size=batch_size, shuffle=True)
+    
+    # Not used in the training process
+    test_set_video = FrameVideoDataset(root_dir=DATA_DIR, split='test', transform=transform_test_val, stack_frames = True)
+    test_loader = DataLoader(test_set_video,  batch_size=batch_size, shuffle=False)
+    
+    # Models, Optimizers, Epochs
+    models = [Basic3DCNN]
+    optimizers = [{"optimizer": torch.optim.Adam, "params": {"lr": 1e-3, "weight_decay": 1e-4}}]
+    epochs = [10]
+    
+    experiment = Experiment(models=models, optimizers=optimizers, epochs=epochs, trainloader=train_loader, validation_loader=val_loader, test_loader=test_loader, 
+                            trainer=FrameVideoTrainer, description= "pretrained_3d_cnn_andvision_transformer")   
     experiment.run()
 
 def two_stream():
@@ -143,4 +169,5 @@ if __name__ == "__main__":
     #results_json = "20241130-163803_Aggregate.json"
     #plot_curves(RESULTS_DIR, results_json)
     #aggregate()
+    #cnn_3d()
     pass
