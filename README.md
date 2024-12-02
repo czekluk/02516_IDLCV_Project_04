@@ -15,7 +15,7 @@ A subset of the [ucf-101 dataset](https://www.crcv.ucf.edu/data/UCF101.php) for 
 
 The provided dataset includes 720 videos (500/120/120 for train/val/test) of 10 balanced classes related to workout, mode precisely including the classes ['BodyWeightSquats', 'HandstandPushups', 'HandstandWalking', 'JumpingJack', 'JumpRope', 'Lunges', 'PullUps', 'PushUps', 'TrampolineJumping', 'WallPushups'].
 
-![pothole](docs/data_img.png)
+![workout_pics](docs/data_img.png)
 
 ## Run training on the HPC
 
