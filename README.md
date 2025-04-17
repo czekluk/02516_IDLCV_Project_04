@@ -9,6 +9,8 @@ This project aims to classify workout videos according to their actions. The mai
 - **Late Fusion**: predict frame-by-frame, train Linear model to aggregate predictions​
 - **3D CNN**: predict frames together with the time dimension
 
+![poster_slide4](docs/poster_slide4.jpg)
+
 ## Data
 
 A subset of the [ucf-101 dataset](https://www.crcv.ucf.edu/data/UCF101.php) for video action recognition derived from this [Kaggle competition](https://www.kaggle.com/datasets/matthewjansen/ucf101-action-recognition).
@@ -40,7 +42,3 @@ bkill <job-id>
 ## Submission Deadline
 
 Submission on Tuesday 03.12.2024 at 22:00.
-
-## Poster 
-
-The poster can be found [here](https://dtudk.sharepoint.com/:p:/r/sites/IntroDLCV2024/_layouts/15/Doc.aspx?sourcedoc=%7B1FA73496-174A-4087-9FC2-67226032D7E2%7D&file=Poster_Project_04.pptx).
